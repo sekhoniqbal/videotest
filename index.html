@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <h2>video local</h2>
+<video id="local" autoplay></video>
+<h2>video two</h2>
+<video id="remote" autoplay></video>
+  </body>
+  <script type="text/javascript">
+    const alice = new RTCPeerConnection();
+    const bob = new RTCPeerConnection();
+    var rs;
+    var ls;
+    alice.onicecadidate = function(e){
+      console.log("alice got ice candidate");
+      if(e.candidate){
+        bob.addIceCandidate(e.candidate);
+      };
+    }
+    bob.onicecadidate = function(e){
+      console.log("bob got ice candidate");
+      if(e.candidate){
+        alice.addIceCandidate(e.candidate);
+
+      }
+    };
+
+    navigator.mediaDevices.getUserMedia({video:true,})
+    .then(stream=>{alice.addStream(stream); ls=stream; document.getElementById("local").srcObject=stream;})
+    .then(()=>alice.createOffer())
+    .then(offer=>{console.log();alice.setLocalDescription(new RTCSessionDescription(offer));bob.setRemoteDescription(alice.localDescription);})
+    .then(()=>bob.createAnswer())
+    .then(answer=>{ bob.setLocalDescription(new RTCSessionDescription(answer)); alice.setRemoteDescription(bob.localDescription)})
+
+bob.ontrack = e=>{rs=e.streams[0]; document.getElementById("remote").srcObject = e.streams[0]};
+
+  </script>
+</html>

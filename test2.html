@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <button id="getmyvideo" name="button">Show my video</button>
+    <button id="remote" name="button">I want to see remote video</button>
+    <video id="vid" autoplay>
+    </video>
+    <video id="remotevideo" autoplay>
+
+    </video>
+    <div class="condetail">
+
+    </div>
+    <div class="ice">
+      <textarea id="inputice" rows="8" cols="80"></textarea>
+      <button onclick="saveInputIce()" name="button">save remote ice</button>
+    </div>
+  </body>
+  <script type="text/javascript">
+  var obj ={};
+  obj.connection = new RTCPeerConnection();
+  obj.connection.onicecandidate=gotice;
+  obj.localvideo = document.querySelector("#vid");
+  obj.remotevideo = document.querySelector("#remotevideo");
+  obj.iceelement = document.querySelector(".ice");
+  obj.condetail = document.querySelector(".condetail");
+  obj.connection.ontrack = function(event){obj.remotevideo.srcObject=event.streams[0];}
+
+
+  function gotice(event){
+    if(event.candidate){
+      var h3 = document.createElement("h3");
+      h3.innerHTML="You got a new ice candidate, please sent it to your partner";
+      var textbox = document.createElement("textarea");
+      textbox.value=btoa(JSON.stringify(event.candidate));
+      obj.iceelement.appendChild(h3);
+      obj.iceelement.appendChild(textbox);
+    }
+  }
+  function showLocalDescription(offer){
+    var h3 = document.createElement("h3");
+    h3.innerHTML="here are your sharing details, please give it to you partner";
+    var textbox = document.createElement("textarea");
+    textbox.value = btoa(JSON.stringify(offer));
+    obj.condetail.appendChild(h3);
+    obj.condetail.appendChild(textbox);
+    if(obj.mode="offer"){
+      var h3 = document.createElement("h3");
+      h3.innerHTML="please enter you partners connection details below";
+      var textbox = document.createElement("textarea");
+      obj.condetail.appendChild(h3);
+      obj.condetail.appendChild(textbox);
+      obj.remoteofferBox = textbox;
+      var button = document.createElement("button");
+      button.innerHTML = "save";
+      button.addEventListener("click", updateremoteDescription);
+      obj.condetail.appendChild(button);
+    }
+
+  }
+  async function  updateremoteDescription(){
+    await  obj.connection.setRemoteDescription(JSON.parse(atob(obj.remoteofferBox.value)));
+    var h5 = document.createElement("h5");
+    h5.innerHTML="saved";
+    obj.remoteofferBox.after(h5);
+    if(obj.mode=="answer") {setLocalDescription()}
+
+  }
+  function getremotedescription(){
+    var h3 = document.createElement("h3");
+    h3.innerHTML="please enter you partners connection details below";
+    var textbox = document.createElement("textarea");
+    obj.condetail.appendChild(h3);
+    obj.condetail.appendChild(textbox);
+    obj.remoteofferBox = textbox;
+    var button = document.createElement("button");
+    button.innerHTML = "save";
+    button.addEventListener("click", updateremoteDescription);
+    obj.condetail.appendChild(button);
+  }
+  function setLocalDescription(){
+    if(obj.mode=="answer"){
+      obj.connection.createAnswer()
+      .then(description=>{obj.connection.setLocalDescription(description); showLocalDescription(description)})
+    }
+    else{
+          obj.connection.createOffer()
+          .then(description=>{obj.connection.setLocalDescription(description); showLocalDescription(description)})
+        }
+  }
+  function saveInputIce(){
+  var base64ice = document.querySelector("#inputice").value;
+  obj.connection.addIceCandidate(JSON.parse(atob(base64ice)));
+  }
+
+    document.querySelector("#getmyvideo").addEventListener("click", showmyvideo);
+    function showmyvideo(){
+        navigator.mediaDevices.getUserMedia({video:true})
+        .then(stream=>{
+          obj.stream=stream; document.querySelector("#vid").srcObject=stream;
+          var button = document.createElement("button");
+          button.innerHTML = "Share my video";
+          button.addEventListener("click",sendmyvideo );
+          document.querySelector("#vid").after(button);
+      });
+
+    }
+    async function sendmyvideo(){
+      obj.mode="answer";
+    await  obj.connection.addStream(obj.stream);
+      obj.mode="offer";
+      setLocalDescription();
+    }
+    document.querySelector("#remote").addEventListener("click", getremotevideo);
+    async function getremotevideo(){
+      obj.mode = "answer";
+      getremotedescription();
+    }
+  </script>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <video id="local" autoplay></video>
+    <video id="remote" autoplay></video>
+
+    <script>
+      const alice = new RTCPeerConnection();
+      console.log("alice created connection");
+      const bob = new RTCPeerConnection();
+      console.log("bob created connection");
+
+      alice.onicecandidate = e => {
+        console.log("alice got some ice");
+        console.log(e.candidate);
+
+        if(e.candidate) {
+          console.log("ice sent to bob");
+
+          bob.addIceCandidate(e.candidate);
+        }
+      }
+
+      bob.onicecandidate = e => {
+        console.log("bob got some ice");
+        console.log(e.candidate);
+        if(e.candidate) {
+          console.log("ice sent to alice");
+          alice.addIceCandidate(e.candidate);
+        }
+      }
+
+      navigator.mediaDevices.getUserMedia({
+        video:true
+      })
+      .then(stream => {
+        console.log("camera gave video to the browser");
+        document.getElementById("local").srcObject = stream;
+        console.log("video given to local vidoe element on the page");
+        alice.addStream(stream);
+          console.log("video stream added to alice connection");
+        return alice.createOffer();
+      })
+      .then(offer=>{console.log("alice created offer for connecting");  alice.setLocalDescription(new RTCSessionDescription(offer))})
+      .then(()=> {bob.setRemoteDescription(alice.localDescription); console.log("bob saved alice offer as remote description");})
+      .then(()=> bob.createAnswer())
+      .then(answer=>{bob.setLocalDescription(new RTCSessionDescription(answer)); console.log("bob also created answer description");})
+      .then(()=>{alice.setRemoteDescription(bob.localDescription);console.log("alice accepted bobs answer description set it as remote description");});
+
+      bob.ontrack = e =>{
+        console.log("bob got notification that he received the stream from alice");
+        document.getElementById("remote").srcObject = e.streams[0];
+      }
+
+    </script>
+  </body>
+</html>
